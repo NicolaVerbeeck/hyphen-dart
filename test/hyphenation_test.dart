@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:hypen_dart/src/hyphenator_manual.dart';
+import 'package:hypen_dart/src/hyphenator.dart';
 import 'package:hypen_dart/src/model/dict.dart';
 import 'package:hypen_dart/src/parser/dict_parser.dart';
 import 'package:path/path.dart';
@@ -34,12 +34,12 @@ Future<void> main() async {
 
       group(name, () {
         late HyphenDict dict;
-        late HyphenatorManual hyphenator;
+        late Hyphenator hyphenator;
 
         setUpAll(() async {
           final dictFileBytes = await dictFile.readAsBytes();
           dict = DictParser().parseBytes(dictFileBytes);
-          hyphenator = const HyphenatorManual();
+          hyphenator = const Hyphenator();
         });
 
         final input = const LineSplitter().convert(
