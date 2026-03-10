@@ -8,7 +8,9 @@ import 'package:path/path.dart';
 import 'package:test/test.dart';
 
 Future<void> main() async {
-  final files = Directory('test/data')
+  final root = 'third_party/hyphen/tests';
+
+  final files = Directory(root)
       .listSync(recursive: false)
       .whereType<File>()
       .where((f) => f.path.endsWith('.pat'));
@@ -16,7 +18,7 @@ Future<void> main() async {
 
   final encodings = await Future.wait(
     names.map((name) {
-      final dictFile = File('test/data/$name.pat');
+      final dictFile = File(join(root, '$name.pat'));
       return _extractEncoding(dictFile);
     }),
   );
@@ -26,9 +28,9 @@ Future<void> main() async {
       final encoding = encodings[i];
       final name = names[i];
 
-      final dictFile = File('test/data/$name.pat');
-      final wordFile = File('test/data/$name.word');
-      final hyphFile = File('test/data/$name.hyph');
+      final dictFile = File(join(root, '$name.pat'));
+      final wordFile = File(join(root, '$name.word'));
+      final hyphFile = File(join(root, '$name.hyph'));
 
       group(name, () {
         late HyphenDict dict;

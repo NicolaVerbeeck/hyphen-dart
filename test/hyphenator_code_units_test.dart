@@ -38,17 +38,6 @@ void main() {
       expect(result.hyphword, 'aébcd');
     });
 
-    test('handles dotted replacement patterns from conv.pat', () {
-      final dict = DictParser().parseBytes(
-        File('test/data/conv.pat').readAsBytesSync(),
-      );
-
-      final result = const HyphenatorManual().hyphenate(dict, 'klasszon');
-
-      expect(result.hyphens, [3]);
-      expect(result.hyphword, 'klasz=szon');
-    });
-
     test('handles foobar', (){
       final dict = DictParser().parseLines([
         'LEFTHYPHENMIN 4',
