@@ -126,7 +126,8 @@ Measured on an Apple Silicon Mac, with Node 26 for the web builds.
 ## Development
 
 libhyphen is a git submodule in `third_party/hyphen`: its test files are the
-expected results of the tests.
+expected results of the tests. Without it, `dart pub publish --dry-run`
+reports its empty folder as a gitignored file.
 
 ```bash
 git clone --recurse-submodules https://github.com/NicolaVerbeeck/hyphen-dart.git
