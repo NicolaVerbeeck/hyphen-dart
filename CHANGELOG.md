@@ -1,3 +1,10 @@
+## 2.1.0
+
+- `DictCompiler` and `dart run hypen_dart:compile_dict` compile a dictionary
+  into a binary form that is 1.6 to 3.4 times smaller and loads 4 to 7 times
+  faster. `DictParser.parseBytes` recognizes it by its first bytes and still
+  reads libhyphen dictionaries.
+
 ## 2.0.0
 
 - Faster: dictionaries parse about 6x faster and words hyphenate 2-4x faster,

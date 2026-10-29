@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:hypen_dart/src/compiled_dict.dart';
 import 'package:hypen_dart/src/hyphenator.dart';
 import 'package:hypen_dart/src/model/dict.dart';
 import 'package:hypen_dart/src/parser/dict_parser.dart';
@@ -32,32 +33,39 @@ Future<void> main() async {
       final wordFile = File(join(root, '$name.word'));
       final hyphFile = File(join(root, '$name.hyph'));
 
-      group(name, () {
-        late HyphenDict dict;
-        late Hyphenator hyphenator;
+      for (final compiled in [false, true]) {
+        group(compiled ? '$name (compiled)' : name, () {
+          late HyphenDict dict;
+          late Hyphenator hyphenator;
 
-        setUpAll(() async {
-          final dictFileBytes = await dictFile.readAsBytes();
-          dict = DictParser().parseBytes(dictFileBytes);
-          hyphenator = const Hyphenator();
-        });
-
-        final input = const LineSplitter().convert(
-          wordFile.readAsStringSync(encoding: encoding),
-        );
-        final expected = const LineSplitter().convert(
-          hyphFile.readAsStringSync(encoding: encoding),
-        );
-
-        for (var index = 0; index < input.length; ++index) {
-          final inputWord = input[index];
-          test('Hyphenating $inputWord', () {
-            final actual = hyphenator.hyphenate(dict, inputWord);
-            final expectedWord = expected[index];
-            expect(actual.hyphword, expectedWord);
+          setUpAll(() async {
+            final dictFileBytes = await dictFile.readAsBytes();
+            dict = DictParser().parseBytes(dictFileBytes);
+            if (compiled) {
+              dict = DictParser().parseBytes(
+                const DictCompiler().compile(dict),
+              );
+            }
+            hyphenator = const Hyphenator();
           });
-        }
-      });
+
+          final input = const LineSplitter().convert(
+            wordFile.readAsStringSync(encoding: encoding),
+          );
+          final expected = const LineSplitter().convert(
+            hyphFile.readAsStringSync(encoding: encoding),
+          );
+
+          for (var index = 0; index < input.length; ++index) {
+            final inputWord = input[index];
+            test('Hyphenating $inputWord', () {
+              final actual = hyphenator.hyphenate(dict, inputWord);
+              final expectedWord = expected[index];
+              expect(actual.hyphword, expectedWord);
+            });
+          }
+        });
+      }
     }
   });
 }
