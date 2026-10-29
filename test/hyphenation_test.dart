@@ -75,22 +75,21 @@ Future<void> main() async {
   });
 }
 
-/// [HyphenResult.hyphword] built from [HyphenResult.breaks] the way libhyphen
-/// applies them: in order, leaving out the breaks inside what an earlier
-/// break replaced, and cut at libhyphen's length limit.
+/// [HyphenResult.hyphword] built from the [HyphenResult.part]s between the
+/// breaks the way libhyphen applies them: in order, leaving out the breaks
+/// that cannot follow the one before, and cut at libhyphen's length limit.
 String _hyphwordFromBreaks(String word, HyphenResult result) {
-  final runes = word.runes.toList();
-  final out = StringBuffer();
-  var done = 0;
+  final used = <HyphenBreak>[];
   for (final b in result.breaks) {
-    if (b.index < done) continue;
-    out
-      ..write(String.fromCharCodes(runes, done, b.start))
-      ..write('${b.before}=${b.after}');
-    done = b.end;
+    if (used.isEmpty || b.canFollow(used.last)) used.add(b);
   }
-  final all = (out..write(String.fromCharCodes(runes, done))).toString().runes;
-  return String.fromCharCodes(all.take(2 * runes.length - 1));
+  final parts = [
+    for (var i = 0; i <= used.length; ++i)
+      result.part(i > 0 ? used[i - 1] : null, i < used.length ? used[i] : null),
+  ];
+  return String.fromCharCodes(
+    parts.join('=').runes.take(2 * word.runes.length - 1),
+  );
 }
 
 /// The encoding is in the first line of the dict file

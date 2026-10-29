@@ -159,6 +159,60 @@ void main() {
 
       expect(const Hyphenator().hyphenate(dict, 'xyz').breaks, isEmpty);
     });
+
+    test('the parts of a word broken at two places', () {
+      final dict = DictParser().parseLines([
+        's1sz/sz=sz,1,3',
+        'ú1s',
+      ], isUtf8: true);
+      final result = const Hyphenator().hyphenate(dict, 'hosszúság');
+      final [first, second] = result.breaks;
+
+      expect(second.canFollow(first), isTrue);
+      expect(first.canFollow(second), isFalse);
+      expect(first.canFollow(first), isFalse);
+      expect(
+        [
+          result.part(null, first),
+          result.part(first, second),
+          result.part(second, null),
+        ],
+        ['hosz', 'szú', 'ság'],
+      );
+      expect(result.part(null, first), first.firstPart);
+      expect(result.part(second, null), second.secondPart);
+      expect(result.part(null, null), 'hosszúság');
+    });
+
+    test('a break in the letters that an earlier break replaces', () {
+      final dict = DictParser().parseLines([
+        's1sz/sz=sz,1,3',
+        'z1ú',
+        'ú1s',
+      ], isUtf8: true);
+      final result = const Hyphenator().hyphenate(dict, 'hosszúság');
+      final [first, inside, last] = result.breaks;
+
+      // libhyphen leaves the break after the z out
+      expect(result.hyphword, 'hosz=szú=ság');
+      expect(inside.canFollow(first), isFalse);
+      expect(last.canFollow(first), isTrue);
+      expect(() => result.part(first, inside), throwsArgumentError);
+      expect(result.part(first, last), 'szú');
+    });
+
+    test('parts only between breaks of the same word', () {
+      final dict = DictParser().parseLines([
+        'LEFTHYPHENMIN 1',
+        'RIGHTHYPHENMIN 1',
+        'a1b',
+      ], isUtf8: false);
+      final result = const Hyphenator().hyphenate(dict, 'abab');
+      final other = const Hyphenator().hyphenate(dict, 'abab').breaks.first;
+
+      expect(() => result.part(other, null), throwsArgumentError);
+      expect(() => result.part(null, other), throwsArgumentError);
+    });
   });
 
   group('DictParser', () {

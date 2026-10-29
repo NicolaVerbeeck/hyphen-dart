@@ -98,6 +98,19 @@ first.secondPart;            // 'szúság', on the next line
 (first.before, first.after); // ('sz', ''): by 'sz' in the first part
 ```
 
+A word broken over more than two lines takes its parts from
+`HyphenResult.part`, between two of its breaks. `HyphenBreak.canFollow` tells
+whether a break can come after the one on the line before: not when it lies in
+the letters that one replaces.
+
+```dart
+final [first, second] = result.breaks;
+result.part(null, first);   // 'hosz'
+result.part(first, second); // 'szú'
+result.part(second, null);  // 'ság'
+second.canFollow(first);    // true
+```
+
 ## Compiled dictionaries
 
 Compile a dictionary once to make it smaller and faster to load:

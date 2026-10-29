@@ -33,6 +33,33 @@ class HyphenResult {
     for (final index in hyphens) _breakAt(index),
   ]);
 
+  /// The part of the word between two of its [breaks], without hyphens: from
+  /// [from], or the start of the word when it is null, up to [to], or the end
+  /// of the word. A word broken over three lines is `part(null, first)`,
+  /// `part(first, second)` and `part(second, null)`.
+  ///
+  /// Throws an [ArgumentError] when a break is not one of [breaks], or when
+  /// [to] cannot follow [from] (see [HyphenBreak.canFollow]).
+  String part(HyphenBreak? from, HyphenBreak? to) {
+    if (from != null && !identical(from._word, _word)) {
+      throw ArgumentError('from is not a break of this word');
+    }
+    if (to != null && !identical(to._word, _word)) {
+      throw ArgumentError('to is not a break of this word');
+    }
+    if (from != null && to != null && !to.canFollow(from)) {
+      throw ArgumentError(
+        'The break after ${to.index} cannot follow the break after '
+        '${from.index}',
+      );
+    }
+    final start = from?.end ?? 0;
+    final end = to?.start ?? _word.length;
+    return (from?.after ?? '') +
+        String.fromCharCodes(_word, start, end) +
+        (to?.before ?? '');
+  }
+
   final Int32List _word;
 
   /// Hyphenation values per code point, odd where a break is allowed.
@@ -149,7 +176,8 @@ class HyphenResult {
 
 /// A place where a word may be broken, and the two parts it becomes there:
 /// [firstPart] ends a line, followed by a hyphen, and [secondPart] starts the
-/// next one.
+/// next one. [HyphenResult.part] gives the parts of a word broken at more
+/// than one place.
 ///
 /// Positions are counted in code points of the word, like
 /// [HyphenResult.hyphens].
@@ -184,10 +212,16 @@ final class HyphenBreak {
   final String after;
 
   /// The word up to the break, without a hyphen: "hosz" for the first break
-  /// of "hosszúság".
+  /// of "hosszúság". The same as `part(null, this)`.
   String get firstPart => String.fromCharCodes(_word, 0, start) + before;
 
   /// The word from the break on: "szúság" for the first break of
-  /// "hosszúság".
+  /// "hosszúság". The same as `part(this, null)`.
   String get secondPart => after + String.fromCharCodes(_word, end);
+
+  /// Whether the word can be broken at [previous], one of its breaks, and
+  /// then at this break: this break has to come after the code points that
+  /// [previous] replaces, and not replace any of them itself.
+  bool canFollow(HyphenBreak previous) =>
+      index >= previous.end && start >= previous.end;
 }
