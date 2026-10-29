@@ -1,10 +1,13 @@
+@TestOn('vm')
+library;
+
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:hypen_dart/src/compiled_dict.dart';
-import 'package:hypen_dart/src/hyphenator.dart';
-import 'package:hypen_dart/src/model/dict.dart';
-import 'package:hypen_dart/src/parser/dict_parser.dart';
+import 'package:hyphen_dart/src/compiled_dict.dart';
+import 'package:hyphen_dart/src/hyphenator.dart';
+import 'package:hyphen_dart/src/model/dict.dart';
+import 'package:hyphen_dart/src/parser/dict_parser.dart';
 import 'package:path/path.dart';
 import 'package:test/test.dart';
 

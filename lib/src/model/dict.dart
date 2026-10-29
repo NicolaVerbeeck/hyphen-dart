@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:hypen_dart/src/model/automaton.dart';
+import 'package:hyphen_dart/src/model/automaton.dart';
 import 'package:meta/meta.dart';
 
 /// A parsed hyphenation dictionary.

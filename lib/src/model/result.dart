@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:hypen_dart/src/model/consts.dart';
+import 'package:hyphen_dart/src/model/consts.dart';
 import 'package:meta/meta.dart';
 
 class HyphenResult {

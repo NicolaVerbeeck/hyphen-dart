@@ -1,5 +1,5 @@
-import 'package:hypen_dart/src/hyphenator.dart';
-import 'package:hypen_dart/src/parser/dict_parser.dart';
+import 'package:hyphen_dart/src/hyphenator.dart';
+import 'package:hyphen_dart/src/parser/dict_parser.dart';
 import 'package:test/test.dart';
 
 void main() {

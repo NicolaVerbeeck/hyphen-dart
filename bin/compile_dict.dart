@@ -1,13 +1,13 @@
 import 'dart:io';
 
-import 'package:hypen_dart/hypen_dart.dart';
+import 'package:hyphen_dart/hyphen_dart.dart';
 
 /// Compiles a libhyphen dictionary into the format of [DictCompiler], which
 /// DictParser.parseBytes loads several times faster.
 void main(List<String> args) {
   if (args.length != 2) {
     stderr.writeln(
-      'Usage: dart run hypen_dart:compile_dict <dictionary.dic> <output.hyb>',
+      'Usage: dart run hyphen_dart:compile_dict <dictionary.dic> <output.hyb>',
     );
     exit(64);
   }

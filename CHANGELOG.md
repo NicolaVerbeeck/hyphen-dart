@@ -1,9 +1,12 @@
 ## 2.1.0
 
-- `DictCompiler` and `dart run hypen_dart:compile_dict` compile a dictionary
+- `DictCompiler` and `dart run hyphen_dart:compile_dict` compile a dictionary
   into a binary form that is 1.6 to 3.4 times smaller and loads 4 to 7 times
   faster. `DictParser.parseBytes` recognizes it by its first bytes and still
   reads libhyphen dictionaries.
+- Non-standard patterns with only an index (`text,index`) or with more than
+  three fields are no longer ignored: like libhyphen, they ignore the index or
+  the extra fields.
 
 ## 2.0.0
 
@@ -17,6 +20,8 @@
 - Fixed: a non-standard pattern with its break before the first or after the
   last character of the word threw a `RangeError`.
 - `HyphenResult.hyphword` is built on first use.
+- Breaking: the package is renamed from `hypen_dart` to `hyphen_dart`; import
+  `package:hyphen_dart/hyphen_dart.dart`.
 - Breaking: removed `HyphenState`, `HyphenTrans` and `HyphenDict.states`.
   `HyphenDict` and `HyphenResult` are created by the package only.
 
