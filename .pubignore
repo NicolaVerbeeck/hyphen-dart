@@ -1,0 +1,13 @@
+.idea/
+.dart_tool/
+.github/
+.gitmodules
+unit.test.json
+*.iml
+build/
+analysis_options.yaml
+coverage/
+test/
+third_party/
+pubspec.lock
+.DS_Store

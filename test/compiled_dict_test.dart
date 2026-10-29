@@ -45,6 +45,21 @@ void main() {
       ]);
     });
 
+    test('dictionaries with more than 256 characters', () {
+      // Edge labels take two bytes then.
+      final chars = [for (var c = 0x100; c < 0x100 + 300; ++c) c];
+      final text = DictParser().parseLines([
+        for (final c in chars) 'a1${String.fromCharCode(c)}',
+      ], isUtf8: true);
+
+      expectSameHyphenation(text, compileAndLoad(text), [
+        'xa${String.fromCharCodes(chars.take(40))}',
+        String.fromCharCodes([
+          for (final c in chars) ...[0x61, c],
+        ]),
+      ]);
+    });
+
     test('keeps non-standard hyphenation and the next level', () {
       // libhyphen's compound3 test
       final text = DictParser().parseLines([
@@ -77,7 +92,7 @@ void main() {
       expect(compiled.rightHyphenMin, 4);
       expect(compiled.compoundLeftHyphenMin, 3);
       expect(compiled.compoundRightHyphenMin, 4);
-      expect(compiled.noHyphenWords, ["'", '–', '’', '-']);
+      expect(compiled.noHyphenWords, ["'", '\u2013', '\u2019', '-']);
       expect(compiled.nextLevel!.noHyphenWords, ['ab', '', 'cd']);
       expect(compiled.nextLevel!.nextLevel, isNull);
     });

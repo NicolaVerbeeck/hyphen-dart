@@ -94,18 +94,24 @@ class DictParser {
           }
 
           if (_contains(text, start, end, 0x2F /* '/' */)) {
-            dict.loadLine(text.substring(start, end));
+            dict.loadReplacementLine(text.substring(start, end));
           } else {
             dict.loadPattern(text, start, end);
           }
         }
       } else {
-        dict.noHyphenWords.addAll((isUtf8 ? "',–,’,-" : "',-").split(','));
-        dict.loadLine('1-1');
-        dict.loadLine("1'1");
-        if (isUtf8) {
-          dict.loadLine('1–1'); // en-dash
-          dict.loadLine('1’1'); // right single quotation mark
+        dict.noHyphenWords.addAll(
+          (isUtf8 ? "',\u2013,\u2019,-" : "',-").split(','),
+        );
+        for (final pattern in [
+          '1-1',
+          "1'1",
+          if (isUtf8) ...[
+            '1\u20131', // en-dash
+            '1\u20191', // right single quotation mark
+          ],
+        ]) {
+          dict.loadPattern(pattern, 0, pattern.length);
         }
       }
     }
@@ -239,17 +245,12 @@ class _LevelBuilder {
     _setPattern(state, digits, from, length + 1, null);
   }
 
-  /// A pattern line, which may have a replacement.
-  void loadLine(String line) {
-    String? replacement;
-    int replIndex = 0;
-    int replCut = 0;
-
+  /// A pattern line with a replacement after a '/' (non-standard
+  /// hyphenation).
+  void loadReplacementLine(String line) {
     final slashIdx = line.indexOf('/');
-    if (slashIdx >= 0) {
-      replacement = line.substring(slashIdx + 1).trim();
-      line = line.substring(0, slashIdx).trim();
-    }
+    var replacement = line.substring(slashIdx + 1).trim();
+    line = line.substring(0, slashIdx).trim();
 
     // Build word as a list of codepoints and pattern as digit values.
     // We iterate by codepoints so that supplementary characters (surrogate
@@ -270,36 +271,27 @@ class _LevelBuilder {
       }
     }
 
-    if (replacement != null) {
-      final parts = replacement.split(',');
-      if (parts.length == 1) {
-        replIndex = 0;
-        replCut = line.length;
-      } else if (parts.length == 3) {
-        replacement = parts[0].trim();
+    // As in libhyphen: "text" replaces the whole pattern, "text,index" ignores
+    // the index and "text,index,cut" ignores anything after the cut.
+    var replIndex = 0;
+    var replCut = 0;
+    final parts = replacement.split(',');
+    if (parts.length == 1) {
+      replCut = line.length;
+    } else {
+      replacement = parts[0].trim();
+      if (parts.length >= 3) {
         replIndex = (int.tryParse(parts[1].trim()) ?? 1) - 1;
         replCut = int.tryParse(parts[2].trim()) ?? 0;
-      } else {
-        replacement = null; // Invalid replacement format, ignore it
       }
     }
 
-    var patternStart = 0;
-    if (replacement == null) {
-      // Remove leading 0s from pattern
-      while (patternStart < pattern.length && pattern[patternStart] == 0) {
-        patternStart++;
-      }
-    } else {
-      // When the pattern word starts with '.', skip one pattern slot (the
-      // leading dot is not part of the hyphenation target, so the pattern
-      // array is offset by 1).  Do NOT adjust replIndex: the 1-based values
-      // from the file already count codepoints relative to the word-without-
-      // dot, so replIndex (= file_value - 1) is already correct.
-      if (wordCps.isNotEmpty && wordCps.first == charDot) {
-        ++patternStart;
-      }
-    }
+    // When the pattern word starts with '.', skip one pattern slot (the
+    // leading dot is not part of the hyphenation target, so the pattern
+    // array is offset by 1).  Do NOT adjust replIndex: the 1-based values
+    // from the file already count codepoints relative to the word-without-
+    // dot, so replIndex (= file_value - 1) is already correct.
+    final patternStart = wordCps.isNotEmpty && wordCps.first == charDot ? 1 : 0;
 
     var state = 0;
     for (final cp in wordCps) {
@@ -310,14 +302,12 @@ class _LevelBuilder {
       pattern,
       patternStart,
       pattern.length,
-      replacement == null
-          ? null
-          : Replacement(
-              replacement,
-              replIndex,
-              // replacementCut is in codepoints
-              replCut != 0 ? replCut : wordCps.length,
-            ),
+      Replacement(
+        replacement,
+        replIndex,
+        // replacementCut is in codepoints
+        replCut != 0 ? replCut : wordCps.length,
+      ),
     );
   }
 

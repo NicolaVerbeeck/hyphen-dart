@@ -63,6 +63,33 @@ void main() {
       expect(const Hyphenator().hyphenate(dict, 'abcd').hyphword, 'abcd');
       expect(const Hyphenator().hyphenate(dict, 'xbcd').hyphword, 'xb=cd');
     });
+
+    test('a replacement without index and cut replaces the pattern', () {
+      final dict = DictParser().parseLines(['ab1c/b=c'], isUtf8: false);
+
+      expect(const Hyphenator().hyphenate(dict, 'xabcx').hyphword, 'xb=c');
+    });
+
+    test('a replacement with only an index ignores it', () {
+      final dict = DictParser().parseLines(['ab1c/b=c,1'], isUtf8: false);
+
+      expect(const Hyphenator().hyphenate(dict, 'xabcx').hyphword, 'xb=cx');
+    });
+
+    test('a replacement ignores what follows the cut', () {
+      final dict = DictParser().parseLines(['ab1c/b=c,2,1,9'], isUtf8: false);
+
+      expect(const Hyphenator().hyphenate(dict, 'xabcx').hyphword, 'xab=ccx');
+    });
+
+    test('a state with many transitions falls back to one with few', () {
+      final dict = DictParser().parseLines([
+        for (final c in 'abcdefgh'.split('')) 'x1$c',
+      ], isUtf8: false);
+
+      expect(const Hyphenator().hyphenate(dict, 'axbx').hyphword, 'ax=bx');
+      expect(const Hyphenator().hyphenate(dict, 'xxa').hyphword, 'xxa');
+    });
   });
 
   group('DictParser', () {
@@ -76,6 +103,41 @@ void main() {
 
       expect(const Hyphenator().hyphenate(dict, 'abcd').hyphword, 'ab=cd');
       expect(const Hyphenator().hyphenate(dict, 'xxyy').hyphword, 'xxyy');
+    });
+
+    test('compound minimums without NEXTLEVEL', () {
+      final dict = DictParser().parseLines([
+        'COMPOUNDLEFTHYPHENMIN 4',
+        'COMPOUNDRIGHTHYPHENMIN 5',
+        'a1b',
+      ], isUtf8: false);
+
+      expect(dict.compoundLeftHyphenMin, 4);
+      expect(dict.compoundRightHyphenMin, 5);
+    });
+
+    test('long pattern lines', () {
+      final x = 'x' * 70;
+      final dict = DictParser().parseLines(['${x}1y'], isUtf8: false);
+
+      expect(const Hyphenator().hyphenate(dict, '${x}yz').hyphword, '$x=yz');
+    });
+
+    test('lines ending in CR LF', () {
+      final lines = ['LEFTHYPHENMIN 1', 'RIGHTHYPHENMIN 1', 'a1b', 'c1d'];
+
+      final fromLines = DictParser().parseLines([
+        for (final line in lines) '$line\r\n',
+      ], isUtf8: false);
+      final fromBytes = DictParser().parseBytes(
+        Uint8List.fromList(
+          latin1.encode('ISO8859-1\r\n${lines.join('\r\n')}\r\n'),
+        ),
+      );
+
+      for (final dict in [fromLines, fromBytes]) {
+        expect(const Hyphenator().hyphenate(dict, 'abcd').hyphword, 'a=bc=d');
+      }
     });
   });
 }

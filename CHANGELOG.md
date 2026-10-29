@@ -4,6 +4,9 @@
   into a binary form that is 1.6 to 3.4 times smaller and loads 4 to 7 times
   faster. `DictParser.parseBytes` recognizes it by its first bytes and still
   reads libhyphen dictionaries.
+- Non-standard patterns with only an index (`text,index`) or with more than
+  three fields are no longer ignored: like libhyphen, they ignore the index or
+  the extra fields.
 
 ## 2.0.0
 
