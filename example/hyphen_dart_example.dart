@@ -1,9 +1,9 @@
-import 'package:hypen_dart/hypen_dart.dart';
+import 'package:hyphen_dart/hyphen_dart.dart';
 import 'dart:io';
 
 void main(List<String> args) {
   if (args.length != 2) {
-    print('Usage: dart hypen_dart_example.dart <hyphen dict file> <word>');
+    print('Usage: dart hyphen_dart_example.dart <hyphen dict file> <word>');
     exit(-1);
   }
   final dictFile = File(args[0]);

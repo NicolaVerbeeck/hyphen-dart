@@ -1,4 +1,4 @@
-name: hypen_dart
+name: hyphen_dart
 description: Hyphenates words with libhyphen's TeX patterns and gives libhyphen's results, on the VM and the web. Reads .dic files or compact compiled dictionaries.
 version: 2.1.0
 homepage: https://github.com/NicolaVerbeeck/hyphen-dart

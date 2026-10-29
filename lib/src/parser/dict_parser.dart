@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:hypen_dart/src/compiled_dict.dart';
-import 'package:hypen_dart/src/model/automaton.dart';
-import 'package:hypen_dart/src/model/consts.dart';
-import 'package:hypen_dart/src/model/dict.dart';
-import 'package:hypen_dart/src/parser/automaton_builder.dart';
+import 'package:hyphen_dart/src/compiled_dict.dart';
+import 'package:hyphen_dart/src/model/automaton.dart';
+import 'package:hyphen_dart/src/model/consts.dart';
+import 'package:hyphen_dart/src/model/dict.dart';
+import 'package:hyphen_dart/src/parser/automaton_builder.dart';
 
 class DictParser {
   /// Parses a list of lines into a [HyphenDict]

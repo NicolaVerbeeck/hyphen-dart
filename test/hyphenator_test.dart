@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:hypen_dart/src/hyphenator.dart';
-import 'package:hypen_dart/src/parser/dict_parser.dart';
+import 'package:hyphen_dart/src/hyphenator.dart';
+import 'package:hyphen_dart/src/parser/dict_parser.dart';
 import 'package:test/test.dart';
 
 // No dart:io, so these also run on the web: dart test -p node

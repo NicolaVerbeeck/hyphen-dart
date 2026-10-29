@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:hypen_dart/src/model/automaton.dart';
-import 'package:hypen_dart/src/model/dict.dart';
-import 'package:hypen_dart/src/parser/automaton_builder.dart';
+import 'package:hyphen_dart/src/model/automaton.dart';
+import 'package:hyphen_dart/src/model/dict.dart';
+import 'package:hyphen_dart/src/parser/automaton_builder.dart';
 
 // The compiled dictionary format, version 1. Numbers are unsigned LEB128
 // varints, zigzag encoded where they can be negative. Strings are a length and

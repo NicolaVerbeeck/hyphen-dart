@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:hypen_dart/src/model/automaton.dart';
+import 'package:hyphen_dart/src/model/automaton.dart';
 
 /// States with at least this many transitions get a row in
 /// [PatternAutomaton.rows].

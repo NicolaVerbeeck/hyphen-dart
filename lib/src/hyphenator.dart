@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
-import 'package:hypen_dart/src/model/consts.dart';
-import 'package:hypen_dart/src/model/dict.dart';
-import 'package:hypen_dart/src/model/result.dart';
+import 'package:hyphen_dart/src/model/consts.dart';
+import 'package:hyphen_dart/src/model/dict.dart';
+import 'package:hyphen_dart/src/model/result.dart';
 
 class Hyphenator {
   const Hyphenator();

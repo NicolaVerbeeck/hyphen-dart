@@ -1,6 +1,6 @@
 # hyphen-dart
 
-[![Version](https://img.shields.io/pub/v/hypen_dart.svg)](https://pub.dev/packages/hypen_dart)
+[![Version](https://img.shields.io/pub/v/hyphen_dart.svg)](https://pub.dev/packages/hyphen_dart)
 [![test](https://github.com/NicolaVerbeeck/hyphen-dart/actions/workflows/pr-cicd.yml/badge.svg)](https://github.com/NicolaVerbeeck/hyphen-dart/actions/workflows/pr-cicd.yml)
 [![codecov](https://codecov.io/gh/NicolaVerbeeck/hyphen-dart/graph/badge.svg)](https://codecov.io/gh/NicolaVerbeeck/hyphen-dart)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/NicolaVerbeeck/hyphen-dart/badge)](https://securityscorecards.dev/viewer/?uri=github.com/NicolaVerbeeck/hyphen-dart)
@@ -28,13 +28,13 @@ the Dart VM, in Flutter and on the web (dart2js and dart2wasm).
 
 ```yaml
 dependencies:
-  hypen_dart: ^2.1.0
+  hyphen_dart: ^2.1.0
 ```
 
 Parse a dictionary once and hyphenate with it:
 
 ```dart
-import 'package:hypen_dart/hypen_dart.dart';
+import 'package:hyphen_dart/hyphen_dart.dart';
 
 final dict = DictParser().parseBytes(bytes); // the bytes of hyph_en_US.dic
 
@@ -90,7 +90,7 @@ result.hyphword; // 'hosz=szú=ság'
 Compile a dictionary once to make it smaller and faster to load:
 
 ```bash
-dart run hypen_dart:compile_dict hyph_de_DE.dic hyph_de_DE.hyb
+dart run hyphen_dart:compile_dict hyph_de_DE.dic hyph_de_DE.hyb
 ```
 
 `DictParser.parseBytes` recognizes a compiled dictionary by its first bytes, so

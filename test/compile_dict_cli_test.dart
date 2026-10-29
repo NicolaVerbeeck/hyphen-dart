@@ -3,7 +3,7 @@ library;
 
 import 'dart:io';
 
-import 'package:hypen_dart/hypen_dart.dart';
+import 'package:hyphen_dart/hyphen_dart.dart';
 import 'package:test/test.dart';
 
 void main() {

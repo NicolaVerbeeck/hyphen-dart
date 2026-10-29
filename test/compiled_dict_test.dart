@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:hypen_dart/hypen_dart.dart';
+import 'package:hyphen_dart/hyphen_dart.dart';
 import 'package:test/test.dart';
 
 // No dart:io, so these also run on the web: dart test -p node
