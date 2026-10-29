@@ -1,23 +1,28 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:hypen_dart/src/compiled_dict.dart';
 import 'package:hypen_dart/src/model/automaton.dart';
 import 'package:hypen_dart/src/model/consts.dart';
 import 'package:hypen_dart/src/model/dict.dart';
-
-/// States with at least this many transitions get a row in
-/// [PatternAutomaton.rows].
-const _denseRowMinTransitions = 8;
+import 'package:hypen_dart/src/parser/automaton_builder.dart';
 
 class DictParser {
   /// Parses a list of lines into a [HyphenDict]
   HyphenDict parseLines(List<String> lines, {required bool isUtf8}) =>
       _parse(_ListLines(lines), isUtf8: isUtf8);
 
-  /// Parses a byte array into a [HyphenDict], determining the encoding from the first line.
-  /// Only UTF-8 and Latin-1 encodings are supported, with latin-1 being the fallback
-  /// if the first line is not recognized as UTF-8 ("UTF-8" or "UTF8").
+  /// Parses a byte array into a [HyphenDict]: a libhyphen dictionary, or one
+  /// compiled by [DictCompiler], which is recognized by its first bytes.
+  ///
+  /// A libhyphen dictionary names its encoding on the first line. Only UTF-8
+  /// and Latin-1 encodings are supported, with latin-1 being the fallback if
+  /// the first line is not recognized as UTF-8 ("UTF-8" or "UTF8").
   HyphenDict parseBytes(Uint8List bytes) {
+    if (isCompiledDict(bytes)) {
+      return loadCompiledDict(bytes);
+    }
+
     // Extract the first line to get the encoding
 
     final firstNl = bytes.indexOf(0x0A);
@@ -338,8 +343,7 @@ class _LevelBuilder {
       transTarget[t] = s;
     }
 
-    // Fallback states: the longest proper suffix that is a state. Visiting
-    // the states by depth makes every shorter suffix ready when it is needed.
+    // The states by depth
     final depth = Int32List(count);
     var maxDepth = 0;
     for (var s = 1; s < count; ++s) {
@@ -357,93 +361,13 @@ class _LevelBuilder {
     for (var s = 0; s < count; ++s) {
       byDepth[depthStart[depth[s]]++] = s;
     }
-    final fallback = Int32List(count);
-    fallback[0] = -1; // The root; the states below it fall back to it (0)
-    for (var i = 1; i < count; ++i) {
-      final s = byDepth[i];
-      if (parent[s] == 0) continue;
-      for (var f = fallback[parent[s]]; ; f = fallback[f]) {
-        final t = _children.get(f, chars[s]);
-        if (t >= 0) {
-          fallback[s] = t;
-          break;
-        }
-        if (f == 0) break;
-      }
-    }
-
-    // Alphabet classes, and rows for the states with many transitions
-    final classLow = Int32List(classLowLimit)..fillRange(0, classLowLimit, -1);
-    final classHigh = <int, int>{};
-    final alphabet = <int>[];
-    for (final char in transChar) {
-      if (char < classLowLimit) {
-        if (classLow[char] < 0) {
-          classLow[char] = alphabet.length;
-          alphabet.add(char);
-        }
-      } else if (!classHigh.containsKey(char)) {
-        classHigh[char] = alphabet.length;
-        alphabet.add(char);
-      }
-    }
-    final alphabetSize = alphabet.length;
-    final rowOf = Int32List(count)..fillRange(0, count, -1);
-    var rowCount = 0;
-    for (var s = 0; s < count; ++s) {
-      if (transStart[s + 1] - transStart[s] >= _denseRowMinTransitions) {
-        rowOf[s] = rowCount++;
-      }
-    }
-    final rows = Int32List(rowCount * alphabetSize)
-      ..fillRange(0, rowCount * alphabetSize, -1);
-    for (var s = 0; s < count; ++s) {
-      final row = rowOf[s];
-      if (row < 0) continue;
-      for (var t = transStart[s]; t < transStart[s + 1]; ++t) {
-        final char = transChar[t];
-        final cls = char < classLowLimit ? classLow[char] : classHigh[char]!;
-        rows[row * alphabetSize + cls] = transTarget[t];
-      }
-    }
-    // Follow the fallbacks for the classes a row has no transition for. By
-    // depth, so that the rows of the (shorter) fallback states are complete.
-    for (var i = 1; i < count; ++i) {
-      final s = byDepth[i];
-      final row = rowOf[s];
-      if (row < 0) continue;
-      for (var cls = 0; cls < alphabetSize; ++cls) {
-        if (rows[row * alphabetSize + cls] >= 0) continue;
-        var next = -1;
-        for (var f = fallback[s]; f >= 0; f = fallback[f]) {
-          final fallbackRow = rowOf[f];
-          if (fallbackRow >= 0) {
-            next = rows[fallbackRow * alphabetSize + cls];
-            break;
-          }
-          for (var t = transStart[f]; t < transStart[f + 1]; ++t) {
-            if (transChar[t] == alphabet[cls]) {
-              next = transTarget[t];
-              break;
-            }
-          }
-          if (next >= 0) break;
-        }
-        rows[row * alphabetSize + cls] = next;
-      }
-    }
 
     return HyphenDict(
-      patterns: PatternAutomaton(
+      patterns: completeAutomaton(
         transStart: transStart,
         transChar: transChar,
         transTarget: transTarget,
-        fallback: fallback,
-        classLow: classLow,
-        classHigh: classHigh,
-        alphabetSize: alphabetSize,
-        rowOf: rowOf,
-        rows: rows,
+        byDepth: byDepth,
         matchStart: _matchStart.toList(),
         matchLen: _matchLen.toList(),
         matchData: _matchData.toList(),
