@@ -1,40 +1,47 @@
 import 'dart:typed_data';
 
-abstract class HyphenDict {
-  int get leftHyphenMin;
+import 'package:hypen_dart/src/model/automaton.dart';
+import 'package:meta/meta.dart';
 
-  int get rightHyphenMin;
+/// A parsed hyphenation dictionary.
+///
+/// As in libhyphen, a dictionary has two pattern levels: this one and
+/// [nextLevel]. The breaks this level finds are compound boundaries; the word,
+/// or each part of it between boundaries, is then hyphenated with [nextLevel].
+final class HyphenDict {
+  @internal
+  HyphenDict({
+    required this.patterns,
+    required this.leftHyphenMin,
+    required this.rightHyphenMin,
+    required this.compoundLeftHyphenMin,
+    required this.compoundRightHyphenMin,
+    required List<String> noHyphenWords,
+    required this.nextLevel,
+  }) : noHyphenWords = List.unmodifiable(noHyphenWords),
+       noHyphenRunes = List.unmodifiable([
+         for (final word in noHyphenWords)
+           if (word.isNotEmpty) Int32List.fromList(word.runes.toList()),
+       ]);
 
-  int get compoundLeftHyphenMin;
+  final int leftHyphenMin;
 
-  int get compoundRightHyphenMin;
+  final int rightHyphenMin;
+
+  final int compoundLeftHyphenMin;
+
+  final int compoundRightHyphenMin;
 
   /// Forbidden hyphenation sequences.
-  List<String> get noHyphenWords;
+  final List<String> noHyphenWords;
 
-  List<HyphenState> get states;
+  final HyphenDict? nextLevel;
 
-  HyphenDict? get nextLevel;
-}
+  /// The patterns of this level.
+  @internal
+  final PatternAutomaton patterns;
 
-abstract class HyphenState {
-  /// The digit-pattern string stored as numeric values 0-9.
-  Uint8List? get match;
-
-  String? get replacement;
-
-  int get replacementIndex;
-
-  int get replacementCut;
-
-  int get fallbackState;
-
-  List<HyphenTrans> get transitions;
-}
-
-class HyphenTrans {
-  final int ch; // transition character code unit
-  final int newState;
-
-  const HyphenTrans(this.ch, this.newState);
+  /// [noHyphenWords] as code points, without the empty ones.
+  @internal
+  final List<Int32List> noHyphenRunes;
 }
