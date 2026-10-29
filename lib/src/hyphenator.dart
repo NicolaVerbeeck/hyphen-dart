@@ -335,10 +335,14 @@ class Hyphenator {
       for (var i = 0; i < wordSize; i++) {
         final mi = matchIndex![i];
         if (mi >= 0 && mi < matchRepl.length && matchRepl[mi] != null) {
-          repl[mi - 1] = matchRepl[mi];
-          pos[mi - 1] = mi - i;
-          cut[mi - 1] = matchLength![i];
-          i += matchLength[i] - 1;
+          // A break before the first or after the last character has no
+          // slot; libhyphen writes out of bounds there.
+          if (mi > 0 && mi <= wordSize) {
+            repl[mi - 1] = matchRepl[mi];
+            pos[mi - 1] = mi - i;
+            cut[mi - 1] = matchLength![i];
+          }
+          i += matchLength![i] - 1;
         }
       }
     }

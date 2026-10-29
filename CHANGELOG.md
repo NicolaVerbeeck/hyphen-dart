@@ -7,6 +7,8 @@
 - Fixed: non-standard hyphenation at a compound boundary threw
   `Bad state: Too few elements` on the web.
 - Fixed: `DictParser.parseBytes` read bytes outside the given `Uint8List` view.
+- Fixed: a non-standard pattern with its break before the first or after the
+  last character of the word threw a `RangeError`.
 - `HyphenResult.hyphword` is built on first use.
 - Breaking: removed `HyphenState`, `HyphenTrans` and `HyphenDict.states`.
   `HyphenDict` and `HyphenResult` are created by the package only.

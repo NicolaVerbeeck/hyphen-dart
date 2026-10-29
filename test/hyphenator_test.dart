@@ -42,6 +42,27 @@ void main() {
 
       expect(result.hyphword, 'ki=lo=watt=ti=me');
     });
+
+    test('a replacement before the first character', () {
+      final dict = DictParser().parseLines(['1abcd/x=y,1,1'], isUtf8: false);
+
+      expect(const Hyphenator().hyphenate(dict, 'abcd').hyphword, 'abcd');
+    });
+
+    test('a replacement after the last character', () {
+      final dict = DictParser().parseLines(['b.1/x=y,1,2'], isUtf8: false);
+
+      expect(const Hyphenator().hyphenate(dict, 'ab').hyphword, 'ab');
+    });
+
+    test('patterns are not merged with their suffixes', () {
+      // libhyphen expects dictionaries where substrings.pl merged the digits
+      // of b1cd into abcd.
+      final dict = DictParser().parseLines(['abcd', 'b1cd'], isUtf8: false);
+
+      expect(const Hyphenator().hyphenate(dict, 'abcd').hyphword, 'abcd');
+      expect(const Hyphenator().hyphenate(dict, 'xbcd').hyphword, 'xb=cd');
+    });
   });
 
   group('DictParser', () {
