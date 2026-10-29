@@ -16,7 +16,7 @@ class HyphenResult {
 
   /// Zero-based indices after which a hyphen may be inserted, counted in code
   /// points of the word. They are code-unit indices too when the word has no
-  /// characters outside the Basic Multilingual Plane.
+  /// characters outside the Basic Multilingual Plane. Unmodifiable.
   final List<int> hyphens;
 
   /// The hyphenated word using '=' for standard breaks or replacement text
@@ -205,6 +205,10 @@ final class HyphenBreak {
 
   /// What [firstPart] ends with in place of the replaced code points. Empty
   /// when the break only splits the word.
+  ///
+  /// A dictionary's replacement text marks the break with '='. Without one,
+  /// all of it is [before], although [HyphenResult.hyphword] shows no '='
+  /// at that break.
   final String before;
 
   /// What [secondPart] starts with in place of the replaced code points.

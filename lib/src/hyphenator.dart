@@ -51,11 +51,18 @@ class Hyphenator {
       }
     }
 
-    final hyphenPositions = <int>[];
+    // Unmodifiable, as HyphenResult.breaks is built from it
+    var count = 0;
     for (var i = 0; i < hyphens.length; ++i) {
-      if (hyphens[i].isOdd) {
-        hyphenPositions.add(i);
+      count += hyphens[i] & 1;
+    }
+    List<int> hyphenPositions = const [];
+    if (count > 0) {
+      final positions = Int32List(count);
+      for (var i = 0, k = 0; k < count; ++i) {
+        if (hyphens[i].isOdd) positions[k++] = i;
       }
+      hyphenPositions = positions.asUnmodifiableView();
     }
     return HyphenResult(
       hyphenPositions,

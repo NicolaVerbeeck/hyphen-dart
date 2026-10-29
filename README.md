@@ -98,6 +98,10 @@ first.secondPart;            // 'szúság', on the next line
 (first.before, first.after); // ('sz', ''): by 'sz' in the first part
 ```
 
+How much a break replaces depends on the dictionary, but the parts do not:
+with a dictionary that replaces 'ssz' by 'sz' and 'sz', this break is (2, 5)
+and ('sz', 'sz').
+
 A word broken over more than two lines takes its parts from
 `HyphenResult.part`, between two of its breaks. `HyphenBreak.canFollow` tells
 whether a break can come after the one on the line before: not when it lies in

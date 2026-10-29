@@ -160,6 +160,20 @@ void main() {
       expect(const Hyphenator().hyphenate(dict, 'xyz').breaks, isEmpty);
     });
 
+    test('hyphens cannot be changed', () {
+      final dict = DictParser().parseLines([
+        'LEFTHYPHENMIN 1',
+        'RIGHTHYPHENMIN 1',
+        'a1b',
+      ], isUtf8: false);
+      final broken = const Hyphenator().hyphenate(dict, 'abab').hyphens;
+      final whole = const Hyphenator().hyphenate(dict, 'xyz').hyphens;
+
+      expect(() => broken[0] = 1, throwsUnsupportedError);
+      expect(() => broken.add(4), throwsUnsupportedError);
+      expect(() => whole.add(0), throwsUnsupportedError);
+    });
+
     test('the parts of a word broken at two places', () {
       final dict = DictParser().parseLines([
         's1sz/sz=sz,1,3',
