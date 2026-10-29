@@ -28,7 +28,7 @@ the Dart VM, in Flutter and on the web (dart2js and dart2wasm).
 
 ```yaml
 dependencies:
-  hyphen_dart: ^2.1.0
+  hyphen_dart: ^1.0.0
 ```
 
 Parse a dictionary once and hyphenate with it:
@@ -190,7 +190,7 @@ To release, update the version in `pubspec.yaml` and `CHANGELOG.md`, merge, and
 push a tag:
 
 ```bash
-git tag v2.1.0 && git push origin v2.1.0
+git tag v1.0.0 && git push origin v1.0.0
 ```
 
 Publishing uses pub.dev's automated publishing with GitHub Actions, enabled on
