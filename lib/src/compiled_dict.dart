@@ -6,15 +6,15 @@ import 'package:hypen_dart/src/model/dict.dart';
 import 'package:hypen_dart/src/parser/automaton_builder.dart';
 
 // The compiled dictionary format, version 1. Numbers are unsigned LEB128
-// varints, zigzag encoded where they can be negative. Strings are a length and
-// UTF-8.
+// varints below 2^32, zigzag encoded where they can be negative. Strings are a
+// length and UTF-8.
 //
 //   magic "\x89HYB" | version | level count | the levels, top level first
 //
 // A level:
 //   leftHyphenMin, rightHyphenMin, compoundLeftHyphenMin and
 //     compoundRightHyphenMin (zigzag) | NOHYPHEN count, strings
-//   state count n | alphabet size a, its characters ascending
+//   state count n | alphabet size a (at most 65536), its characters ascending
 //   the trie breadth-first: per state a 1 bit per child and a 0 bit, 2n - 1
 //     bits, least significant bit first
 //   the n - 1 edge labels (alphabet indices): a byte each, two (little
@@ -40,6 +40,11 @@ const _version = 1;
 class DictCompiler {
   const DictCompiler();
 
+  /// Compiles [dict].
+  ///
+  /// Throws an [ArgumentError] when [dict] does not fit the format: a level
+  /// with more than 65536 different characters, or a hyphen minimum or a
+  /// replacement's index or cut outside the 32-bit range.
   Uint8List compile(HyphenDict dict) {
     final levels = [for (HyphenDict? d = dict; d != null; d = d.nextLevel) d];
     final out = _Writer()
@@ -64,6 +69,12 @@ class DictCompiler {
     final patterns = dict.patterns;
     final count = patterns.fallback.length;
     final alphabet = {...patterns.transChar}.toList()..sort();
+    if (alphabet.length > 0x10000) {
+      throw ArgumentError(
+        'A level has ${alphabet.length} different characters, more than the '
+        '65536 of a compiled dictionary',
+      );
+    }
     final classOf = {for (var i = 0; i < alphabet.length; ++i) alphabet[i]: i};
     out
       ..varint(count)
@@ -204,19 +215,38 @@ HyphenDict Function(HyphenDict? nextLevel) _readLevel(_Reader reader) {
   if (alphabetSize > bytes.length - reader.pos) throw _malformed;
   final alphabet = Int32List(alphabetSize);
   for (var i = 0; i < alphabetSize; ++i) {
-    alphabet[i] = reader.varint();
+    final char = reader.varint();
+    // Code points, ascending
+    if (char > 0x10FFFF || i > 0 && char <= alphabet[i - 1]) throw _malformed;
+    alphabet[i] = char;
   }
   if (count < 1) throw _malformed;
 
-  // The trie; edge t leads to state t + 1
+  // The trie and its labels; edge t leads to state t + 1
   final trieBits = reader.take((2 * count + 6) ~/ 8) * 8;
   final trieEnd = trieBits + 2 * count - 1;
+  final wide = alphabetSize > 256;
+  final labels = reader.take(wide ? 2 * (count - 1) : count - 1);
   final transStart = Int32List(count + 1);
+  final transChar = Int32List(count - 1);
+  final transTarget = Int32List(count - 1);
   var bit = trieBits;
   var edges = 0;
   for (var s = 0; s < count; ++s) {
+    // The parent of every state comes before it, so the root reaches it
+    if (edges < s) throw _malformed;
     transStart[s] = edges;
+    var previous = -1;
     while (bit < trieEnd && (bytes[bit >> 3] >> (bit & 7)) & 1 == 1) {
+      if (edges == count - 1) throw _malformed;
+      final label = wide
+          ? bytes[labels + 2 * edges] | bytes[labels + 2 * edges + 1] << 8
+          : bytes[labels + edges];
+      // Children in alphabet order, each character once
+      if (label <= previous || label >= alphabetSize) throw _malformed;
+      previous = label;
+      transChar[edges] = alphabet[label];
+      transTarget[edges] = edges + 1;
       ++edges;
       ++bit;
     }
@@ -224,18 +254,6 @@ HyphenDict Function(HyphenDict? nextLevel) _readLevel(_Reader reader) {
   }
   transStart[count] = edges;
   if (edges != count - 1 || bit != trieEnd) throw _malformed;
-  final wide = alphabetSize > 256;
-  final labels = reader.take(wide ? 2 * edges : edges);
-  final transChar = Int32List(edges);
-  final transTarget = Int32List(edges);
-  for (var t = 0; t < edges; ++t) {
-    final label = wide
-        ? bytes[labels + 2 * t] | bytes[labels + 2 * t + 1] << 8
-        : bytes[labels + t];
-    if (label >= alphabetSize) throw _malformed;
-    transChar[t] = alphabet[label];
-    transTarget[t] = t + 1;
-  }
 
   // Pattern digits
   final vectorCount = reader.varint();
@@ -250,7 +268,9 @@ HyphenDict Function(HyphenDict? nextLevel) _readLevel(_Reader reader) {
     vectorLength[v] = length;
     for (var k = 0; k < length; ++k) {
       final pair = bytes[packed + (k >> 1)];
-      digits.add(k.isEven ? pair & 0xF : pair >> 4);
+      final digit = k.isEven ? pair & 0xF : pair >> 4;
+      if (digit > 9) throw _malformed;
+      digits.add(digit);
     }
   }
   final matchStart = Int32List(count);
@@ -310,7 +330,7 @@ final class _Writer {
   void bytes(List<int> values) => _bytes.add(values);
 
   void varint(int value) {
-    assert(value >= 0);
+    assert(value >= 0 && value <= 0xFFFFFFFF);
     while (value >= 0x80) {
       _bytes.addByte(value & 0x7F | 0x80);
       value >>= 7;
@@ -318,7 +338,13 @@ final class _Writer {
     _bytes.addByte(value);
   }
 
-  void signed(int value) => varint(value >= 0 ? value << 1 : (-value << 1) - 1);
+  void signed(int value) {
+    if (value < -0x80000000 || value > 0x7FFFFFFF) {
+      throw ArgumentError.value(value, null, 'Does not fit in 32 bits');
+    }
+    // Multiplications, as shifts are 32-bit on the web
+    varint(value >= 0 ? value * 2 : -value * 2 - 1);
+  }
 
   void string(String value) {
     final encoded = utf8.encode(value);
@@ -360,19 +386,28 @@ final class _Reader {
     return bytes[pos++];
   }
 
+  /// Reads a varint, which is below 2^32 in this format.
   int varint() {
-    var value = 0;
-    for (var shift = 0; shift <= 28; shift += 7) {
+    final first = byte();
+    return first < 0x80 ? first : _longVarint(first);
+  }
+
+  int _longVarint(int first) {
+    var value = first & 0x7F;
+    for (var shift = 7; shift < 28; shift += 7) {
       final b = byte();
       value |= (b & 0x7F) << shift;
       if (b < 0x80) return value;
     }
-    throw _malformed;
+    final last = byte();
+    if (last > 0xF) throw _malformed;
+    return value | last << 28;
   }
 
   int signed() {
     final value = varint();
-    return value.isEven ? value >> 1 : -((value + 1) >> 1);
+    // Divisions, as shifts are 32-bit on the web
+    return value.isEven ? value ~/ 2 : -(value ~/ 2) - 1;
   }
 
   /// Skips [length] bytes and returns where they start.
