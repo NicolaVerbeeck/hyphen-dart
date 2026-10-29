@@ -23,6 +23,16 @@ class HyphenResult {
   /// for nonstandard hyphenation patterns. Built on first use.
   late final String hyphword = _hyphWord();
 
+  /// The breaks at [hyphens], in the same order: the two parts the word
+  /// becomes at each of them. Built on first use.
+  ///
+  /// Most breaks only split the word, but with non-standard hyphenation the
+  /// letters around the break change too: the Hungarian "hosszúság" breaks
+  /// into "hosz" and "szúság".
+  late final List<HyphenBreak> breaks = List.unmodifiable([
+    for (final index in hyphens) _breakAt(index),
+  ]);
+
   final Int32List _word;
 
   /// Hyphenation values per code point, odd where a break is allowed.
@@ -111,4 +121,73 @@ class HyphenResult {
 
     return String.fromCharCodes(result);
   }
+
+  HyphenBreak _breakAt(int index) {
+    final word = _word;
+    final rep = _rep;
+    final replacement = rep != null && index < rep.length ? rep[index] : null;
+    if (replacement == null) {
+      final at = index < word.length ? index + 1 : word.length;
+      return HyphenBreak._(word, index, at, at, '', '');
+    }
+    // As in hnj_hyphen_hyphword: the replacement starts pos code points before
+    // the break and takes the place of cut code points. The range stays inside
+    // the word, wherever a malformed dictionary points.
+    final start = (index + 1 - _pos![index]).clamp(0, word.length);
+    final end = (start + _cut![index]).clamp(start, word.length);
+    final hyphen = replacement.indexOf('=');
+    return HyphenBreak._(
+      word,
+      index,
+      start,
+      end,
+      hyphen < 0 ? replacement : replacement.substring(0, hyphen),
+      hyphen < 0 ? '' : replacement.substring(hyphen + 1),
+    );
+  }
+}
+
+/// A place where a word may be broken, and the two parts it becomes there:
+/// [firstPart] ends a line, followed by a hyphen, and [secondPart] starts the
+/// next one.
+///
+/// Positions are counted in code points of the word, like
+/// [HyphenResult.hyphens].
+final class HyphenBreak {
+  HyphenBreak._(
+    this._word,
+    this.index,
+    this.start,
+    this.end,
+    this.before,
+    this.after,
+  );
+
+  final Int32List _word;
+
+  /// The code point the break follows, as in [HyphenResult.hyphens].
+  final int index;
+
+  /// Where the code points that the break replaces start. The same as [end],
+  /// right after [index], when the break only splits the word.
+  final int start;
+
+  /// Where the code points that the break replaces end, exclusive.
+  final int end;
+
+  /// What [firstPart] ends with in place of the replaced code points. Empty
+  /// when the break only splits the word.
+  final String before;
+
+  /// What [secondPart] starts with in place of the replaced code points.
+  /// Empty when the break only splits the word.
+  final String after;
+
+  /// The word up to the break, without a hyphen: "hosz" for the first break
+  /// of "hosszúság".
+  String get firstPart => String.fromCharCodes(_word, 0, start) + before;
+
+  /// The word from the break on: "szúság" for the first break of
+  /// "hosszúság".
+  String get secondPart => after + String.fromCharCodes(_word, end);
 }

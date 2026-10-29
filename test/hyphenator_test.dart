@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:hyphen_dart/src/hyphenator.dart';
+import 'package:hyphen_dart/src/model/result.dart';
 import 'package:hyphen_dart/src/parser/dict_parser.dart';
 import 'package:test/test.dart';
 
@@ -89,6 +90,74 @@ void main() {
 
       expect(const Hyphenator().hyphenate(dict, 'axbx').hyphword, 'ax=bx');
       expect(const Hyphenator().hyphenate(dict, 'xxa').hyphword, 'xxa');
+    });
+  });
+
+  group('HyphenResult.breaks', () {
+    List<(int, int, int, String, String, String, String)> breaksOf(
+      HyphenResult result,
+    ) => [
+      for (final b in result.breaks)
+        (b.index, b.start, b.end, b.before, b.after, b.firstPart, b.secondPart),
+    ];
+
+    test('breaks that only split the word', () {
+      final dict = DictParser().parseLines([
+        'LEFTHYPHENMIN 1',
+        'RIGHTHYPHENMIN 1',
+        'a1b',
+      ], isUtf8: false);
+
+      final result = const Hyphenator().hyphenate(dict, 'abab');
+
+      expect(result.hyphens, [0, 2]);
+      expect(breaksOf(result), [
+        (0, 1, 1, '', '', 'a', 'bab'),
+        (2, 3, 3, '', '', 'aba', 'b'),
+      ]);
+    });
+
+    test('a break that changes letters', () {
+      // Hungarian: a double ssz breaks as sz-sz
+      final dict = DictParser().parseLines([
+        's1sz/sz=sz,1,3',
+        'ú1s',
+      ], isUtf8: true);
+
+      final result = const Hyphenator().hyphenate(dict, 'hosszúság');
+
+      expect(result.hyphword, 'hosz=szú=ság');
+      expect(breaksOf(result), [
+        (2, 2, 5, 'sz', 'sz', 'hosz', 'szúság'),
+        (5, 6, 6, '', '', 'hosszú', 'ság'),
+      ]);
+    });
+
+    test('a break that adds a letter at a compound boundary', () {
+      // libhyphen's compound3 test
+      final dict = DictParser().parseLines([
+        'wat1time/tt=t,3,2',
+        '.kilo1watt.',
+        'NEXTLEVEL',
+        '.ki1lo.',
+        '.ti1me.',
+      ], isUtf8: false);
+
+      final result = const Hyphenator().hyphenate(dict, 'kilowattime');
+
+      expect(result.hyphword, 'ki=lo=watt=ti=me');
+      expect(breaksOf(result), [
+        (1, 2, 2, '', '', 'ki', 'lowattime'),
+        (3, 4, 4, '', '', 'kilo', 'wattime'),
+        (6, 6, 8, 'tt', 't', 'kilowatt', 'time'),
+        (8, 9, 9, '', '', 'kilowatti', 'me'),
+      ]);
+    });
+
+    test('a word without breaks', () {
+      final dict = DictParser().parseLines(['a1b'], isUtf8: false);
+
+      expect(const Hyphenator().hyphenate(dict, 'xyz').breaks, isEmpty);
     });
   });
 

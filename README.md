@@ -85,6 +85,19 @@ result.hyphens;  // [2, 5]
 result.hyphword; // 'hosz=szú=ság'
 ```
 
+To break a line at one of these places, `HyphenResult.breaks` gives each break
+with the two parts the word becomes, and the code points that the break
+replaces. A text layout measures and paints the parts, and maps the replaced
+code points back to the word for the caret and selection:
+
+```dart
+final first = result.breaks.first;
+first.firstPart;             // 'hosz', followed by a hyphen
+first.secondPart;            // 'szúság', on the next line
+(first.start, first.end);    // (2, 3): the first 's' is replaced
+(first.before, first.after); // ('sz', ''): by 'sz' in the first part
+```
+
 ## Compiled dictionaries
 
 Compile a dictionary once to make it smaller and faster to load:
