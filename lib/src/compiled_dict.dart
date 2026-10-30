@@ -9,7 +9,8 @@ import 'package:hyphen_dart/src/parser/automaton_builder.dart';
 // varints below 2^32, zigzag encoded where they can be negative. Strings are a
 // length and UTF-8.
 //
-//   magic "\x89HYB" | version | level count | the levels, top level first
+//   magic "\x89HYB" | version | flags: 1 for a UTF-8 dictionary, else 0 |
+//     level count | the levels, top level first
 //
 // A level:
 //   leftHyphenMin, rightHyphenMin, compoundLeftHyphenMin and
@@ -50,6 +51,7 @@ class DictCompiler {
     final out = _Writer()
       ..bytes(_magic)
       ..byte(_version)
+      ..byte(dict.isUtf8 ? 1 : 0)
       ..varint(levels.length);
     for (final level in levels) {
       _writeLevel(out, level);
@@ -188,7 +190,12 @@ HyphenDict loadCompiledDict(Uint8List bytes) {
       'Unsupported compiled hyphenation dictionary version $version',
     );
   }
-  final levels = [for (var i = reader.varint(); i > 0; --i) _readLevel(reader)];
+  final flags = reader.byte();
+  if (flags > 1) throw _malformed;
+  final levels = [
+    for (var i = reader.varint(); i > 0; --i)
+      _readLevel(reader, isUtf8: flags == 1),
+  ];
   if (levels.isEmpty || reader.pos != bytes.length) {
     throw const FormatException('Malformed compiled hyphenation dictionary');
   }
@@ -200,7 +207,10 @@ HyphenDict loadCompiledDict(Uint8List bytes) {
 }
 
 /// Reads a level; the result makes its [HyphenDict] with the next level.
-HyphenDict Function(HyphenDict? nextLevel) _readLevel(_Reader reader) {
+HyphenDict Function(HyphenDict? nextLevel) _readLevel(
+  _Reader reader, {
+  required bool isUtf8,
+}) {
   final leftHyphenMin = reader.signed();
   final rightHyphenMin = reader.signed();
   final compoundLeftHyphenMin = reader.signed();
@@ -316,6 +326,7 @@ HyphenDict Function(HyphenDict? nextLevel) _readLevel(_Reader reader) {
     compoundLeftHyphenMin: compoundLeftHyphenMin,
     compoundRightHyphenMin: compoundRightHyphenMin,
     noHyphenWords: noHyphenWords,
+    isUtf8: isUtf8,
     nextLevel: nextLevel,
   );
 }

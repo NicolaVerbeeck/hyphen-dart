@@ -24,7 +24,9 @@ exact text to put on each line.
 ## Why hyphen_dart
 
 - **The same breaks as libhyphen.** Checked word by word against the C
-  library: no differences on 2.8 million words in seven languages.
+  library on 2.8 million words from all 50 LibreOffice dictionaries and TeX's
+  81 pattern sets: the results only differ for 7 Albanian words, where
+  libhyphen cuts a letter in half.
 - **Breaks that change the word.** Non-standard hyphenation, like Hungarian's
   `hosz-szú`, with the parts of the word at every break, also for a word broken
   over several lines.

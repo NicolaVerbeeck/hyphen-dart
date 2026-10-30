@@ -17,6 +17,7 @@ final class HyphenDict {
     required this.compoundLeftHyphenMin,
     required this.compoundRightHyphenMin,
     required List<String> noHyphenWords,
+    required this.isUtf8,
     required this.nextLevel,
   }) : noHyphenWords = List.unmodifiable(noHyphenWords),
        noHyphenRunes = List.unmodifiable([
@@ -36,6 +37,11 @@ final class HyphenDict {
   final List<String> noHyphenWords;
 
   final HyphenDict? nextLevel;
+
+  /// Whether the dictionary is UTF-8. libhyphen counts the right minimum in
+  /// bytes, which differs from counting characters in a UTF-8 dictionary.
+  @internal
+  final bool isUtf8;
 
   /// The patterns of this level.
   @internal

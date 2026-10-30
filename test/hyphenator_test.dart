@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:hyphen_dart/src/hyphenator.dart';
+import 'package:hyphen_dart/src/model/dict.dart';
 import 'package:hyphen_dart/src/model/result.dart';
 import 'package:hyphen_dart/src/parser/dict_parser.dart';
 import 'package:test/test.dart';
@@ -17,6 +18,54 @@ void main() {
         const Hyphenator().hyphenate(dict, 'ab2abcd').hyphword,
         'ab2ab=cd',
       );
+    });
+
+    test('the right minimum counts bytes', () {
+      // libhyphen counts the right minimum in bytes and stops before the
+      // first one: a first letter of one byte can stay alone on a line.
+      final lines = [
+        'LEFTHYPHENMIN 1',
+        'RIGHTHYPHENMIN 2',
+        'é1b',
+        'a1b',
+        'é1é',
+      ];
+      final utf8Dict = DictParser().parseLines(lines, isUtf8: true);
+      final latin1Dict = DictParser().parseLines(lines, isUtf8: false);
+      String hyphword(HyphenDict dict, String word) =>
+          const Hyphenator().hyphenate(dict, word).hyphword;
+
+      expect(hyphword(utf8Dict, 'éb'), 'éb');
+      expect(hyphword(utf8Dict, 'éé'), 'éé');
+      expect(hyphword(utf8Dict, 'ab'), 'a=b');
+      expect(hyphword(latin1Dict, 'éb'), 'é=b');
+      expect(hyphword(latin1Dict, 'éé'), 'é=é');
+      expect(hyphword(latin1Dict, 'ab'), 'a=b');
+    });
+
+    test('ffi and ffl count as two letters for the left minimum', () {
+      final dict = DictParser().parseLines([
+        'LEFTHYPHENMIN 2',
+        'RIGHTHYPHENMIN 1',
+        'ﬃ1n',
+        'ﬀ1n',
+      ], isUtf8: true);
+
+      expect(const Hyphenator().hyphenate(dict, 'ﬃn').hyphword, 'ﬃ=n');
+      expect(const Hyphenator().hyphenate(dict, 'ﬀn').hyphword, 'ﬀn');
+    });
+
+    test('a replacement without = is kept whatever the minimums', () {
+      // As in LibreOffice's Albanian dictionary
+      final dict = DictParser().parseLines([
+        'LEFTHYPHENMIN 2',
+        'RIGHTHYPHENMIN 2',
+        'a3dh4/e',
+      ], isUtf8: true);
+
+      expect(const Hyphenator().hyphenate(dict, 'adh').hyphword, 'e');
+      expect(const Hyphenator().hyphenate(dict, 'xadh').hyphword, 'xe');
+      expect(const Hyphenator().hyphenate(dict, 'adhxx').hyphword, 'e');
     });
 
     test('a digit ends a word', () {
@@ -222,10 +271,12 @@ void main() {
         'a1b',
       ], isUtf8: false);
       final result = const Hyphenator().hyphenate(dict, 'abab');
-      final other = const Hyphenator().hyphenate(dict, 'abab').breaks.first;
+      final [_, other] = const Hyphenator().hyphenate(dict, 'abab').breaks;
 
       expect(() => result.part(other, null), throwsArgumentError);
       expect(() => result.part(null, other), throwsArgumentError);
+      expect(other.canFollow(result.breaks.first), isFalse);
+      expect(result.breaks.last.canFollow(result.breaks.first), isTrue);
     });
   });
 
@@ -258,6 +309,30 @@ void main() {
       final dict = DictParser().parseLines(['${x}1y'], isUtf8: false);
 
       expect(const Hyphenator().hyphenate(dict, '${x}yz').hyphword, '$x=yz');
+    });
+
+    test('the last NOHYPHEN word before CR LF keeps the CR', () {
+      // As in LibreOffice's Catalan and Mongolian dictionaries: libhyphen
+      // drops only the '\n', and the word with the '\r' never matches.
+      const lines = [
+        'UTF-8',
+        'LEFTHYPHENMIN 1',
+        'RIGHTHYPHENMIN 1',
+        'NOHYPHEN x,b',
+        'a1b',
+        'NEXTLEVEL',
+        'a1b',
+      ];
+      HyphenDict parse(String newline) => DictParser().parseBytes(
+        Uint8List.fromList(utf8.encode('${lines.join(newline)}$newline')),
+      );
+      final lf = parse('\n');
+      final crlf = parse('\r\n');
+
+      expect(lf.noHyphenWords, ['x', 'b']);
+      expect(crlf.noHyphenWords, ['x', 'b\r']);
+      expect(const Hyphenator().hyphenate(lf, 'ab').hyphword, 'ab');
+      expect(const Hyphenator().hyphenate(crlf, 'ab').hyphword, 'a=b');
     });
 
     test('lines ending in CR LF', () {

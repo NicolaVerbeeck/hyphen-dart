@@ -28,12 +28,14 @@ class Hyphenator {
       hyphens,
       rep,
       dict.leftHyphenMin > 0 ? dict.leftHyphenMin : 2,
+      isUtf8: dict.isUtf8,
     );
     _hyphenRightMin(
       runes,
       hyphens,
       rep,
       dict.rightHyphenMin > 0 ? dict.rightHyphenMin : 2,
+      isUtf8: dict.isUtf8,
     );
 
     final noHyphen = dict.noHyphenRunes;
@@ -78,9 +80,10 @@ class Hyphenator {
     Int32List word,
     Uint8List hyphens,
     _Replacements rep,
-    int lhmin,
-  ) {
-    var i = 1;
+    int lhmin, {
+    required bool isUtf8,
+  }) {
+    var i = 1 + (isUtf8 && word.isNotEmpty ? _ligature(word[0]) : 0);
     var j = 0;
 
     // Skip numbers at the start of the word
@@ -106,13 +109,22 @@ class Hyphenator {
       if (replacements != null && replacements[j] != null && pos != null) {
         final replacement = replacements[j]!;
         final rhIndex = replacement.indexOf('=');
+        // libhyphen keeps a replacement without '=', whatever its length
+        isAllowed = rhIndex < 0;
 
         if (rhIndex >= 0) {
           // Calculate effective length of the left part
           // 1. Length of word stem before the replacement
-          final prefixLen = _stringLength(word, n: j - pos[j] + 1);
-          // 2. Length of the replacement string before the hyphen (using runes)
-          final replLen = replacement.substring(0, rhIndex).runes.length;
+          final prefixLen = _stringLength(
+            word,
+            n: j - pos[j] + 1,
+            isUtf8: isUtf8,
+          );
+          // 2. Length of the replacement string before the hyphen
+          final replLen = _length(
+            replacement.substring(0, rhIndex).runes,
+            isUtf8: isUtf8,
+          );
 
           if ((prefixLen + replLen) >= lhmin) {
             isAllowed = true;
@@ -129,6 +141,9 @@ class Hyphenator {
           replacements[j] = null;
         }
       }
+
+      // A ligature next counts as its letters too
+      if (isUtf8 && j + 1 < word.length) i += _ligature(word[j + 1]);
     }
   }
 
@@ -136,8 +151,9 @@ class Hyphenator {
     Int32List word,
     Uint8List hyphens,
     _Replacements rep,
-    int rhmin,
-  ) {
+    int rhmin, {
+    required bool isUtf8,
+  }) {
     var i = 0;
     var j = 0;
 
@@ -151,8 +167,12 @@ class Hyphenator {
       }
     }
 
-    // Iterate through the rest of the word
-    for (j = word.length - 1; i < rhmin && j > 0; --j, ++i) {
+    // Iterate through the rest of the word. libhyphen counts bytes and stops
+    // before the first one, so it checks the break after the first character
+    // only when that character has more than one byte: in a UTF-8 dictionary,
+    // outside ASCII.
+    final first = isUtf8 && word.isNotEmpty && word[0] >= 0x80 ? 0 : 1;
+    for (j = word.length - 1; i < rhmin && j >= first; --j, ++i) {
       if (word[j] == 0) break; // Honor null-terminator if present
 
       bool isAllowed = false;
@@ -163,17 +183,21 @@ class Hyphenator {
       if (replacements != null && replacements[j] != null && pos != null) {
         final replacement = replacements[j]!;
         final rhIndex = replacement.indexOf('=');
+        // libhyphen keeps a replacement without '=', whatever its length
+        isAllowed = rhIndex < 0;
 
         if (rhIndex >= 0) {
           final prefixLen = _stringLength(
             word,
             n: 100,
             start: j - pos[j] + rep.cut![j] + 1,
+            isUtf8: isUtf8,
           );
-          final replLen =
-              replacement.runes.length -
-              rhIndex -
-              1; // Length of the replacement string after the hyphen
+          // Length of the replacement string after the hyphen
+          final replLen = _length(
+            replacement.substring(rhIndex + 1).runes,
+            isUtf8: isUtf8,
+          );
 
           if ((prefixLen + replLen) >= rhmin) {
             isAllowed = true;
@@ -457,8 +481,12 @@ class Hyphenator {
       rend: rend,
       prepWord: prepWord,
     );
-    if (!lend) _hyphenLeftMin(word, hyphens, rep, clhmin);
-    if (!rend) _hyphenRightMin(word, hyphens, rep, crhmin);
+    if (!lend) {
+      _hyphenLeftMin(word, hyphens, rep, clhmin, isUtf8: nextLevel.isUtf8);
+    }
+    if (!rend) {
+      _hyphenRightMin(word, hyphens, rep, crhmin, isUtf8: nextLevel.isUtf8);
+    }
   }
 
   static Int32List _runes(String word) {
@@ -537,15 +565,34 @@ class Hyphenator {
     return true;
   }
 
-  static int _stringLength(Int32List word, {required int n, int start = 0}) {
+  static int _stringLength(
+    Int32List word, {
+    required int n,
+    int start = 0,
+    required bool isUtf8,
+  }) {
     var j = start;
     var i = 0;
     while (j < n && j < word.length && word[j] != 0) {
-      ++i;
+      i += 1 + (isUtf8 ? _ligature(word[j]) : 0);
       ++j;
     }
     return i;
   }
+
+  /// How many letters libhyphen counts in [runes] for the hyphen minimums.
+  static int _length(Iterable<int> runes, {required bool isUtf8}) {
+    var length = 0;
+    for (final rune in runes) {
+      length += 1 + (isUtf8 ? _ligature(rune) : 0);
+    }
+    return length;
+  }
+
+  /// The letters a character counts for more than one in the hyphen minimums
+  /// of a UTF-8 dictionary. libhyphen, built without LONG_LIGATURE, counts the
+  /// ffi and ffl ligatures as two letters.
+  static int _ligature(int char) => char == 0xFB03 || char == 0xFB04 ? 1 : 0;
 }
 
 /// The non-standard hyphenation after each character (rep, pos and cut in

@@ -225,7 +225,10 @@ final class HyphenBreak {
 
   /// Whether the word can be broken at [previous], one of its breaks, and
   /// then at this break: this break has to come after the code points that
-  /// [previous] replaces, and not replace any of them itself.
+  /// [previous] replaces, and not replace any of them itself. False when
+  /// [previous] is a break of another [HyphenResult].
   bool canFollow(HyphenBreak previous) =>
-      index >= previous.end && start >= previous.end;
+      identical(previous._word, _word) &&
+      index >= previous.end &&
+      start >= previous.end;
 }
