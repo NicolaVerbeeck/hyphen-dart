@@ -5,12 +5,15 @@ import 'package:hyphen_dart/src/model/automaton.dart';
 import 'package:hyphen_dart/src/model/dict.dart';
 import 'package:hyphen_dart/src/parser/automaton_builder.dart';
 
-// The compiled dictionary format, version 1. Numbers are unsigned LEB128
+// The compiled dictionary format, version 2. Numbers are unsigned LEB128
 // varints below 2^32, zigzag encoded where they can be negative. Strings are a
 // length and UTF-8.
 //
 //   magic "\x89HYB" | version | flags: 1 for a UTF-8 dictionary, else 0 |
 //     level count | the levels, top level first
+//
+// Version 1 has no flags; it loads as a dictionary that is not UTF-8, which
+// is how it hyphenated before the flags.
 //
 // A level:
 //   leftHyphenMin, rightHyphenMin, compoundLeftHyphenMin and
@@ -34,7 +37,7 @@ import 'package:hyphen_dart/src/parser/automaton_builder.dart';
 /// with the name of its encoding instead, which is ASCII.
 const _magic = [0x89, 0x48, 0x59, 0x42]; // "\x89HYB"
 
-const _version = 1;
+const _version = 2;
 
 /// Compiles a [HyphenDict] into a compact binary form that loads several times
 /// faster than a libhyphen dictionary. DictParser.parseBytes reads both.
@@ -185,12 +188,12 @@ HyphenDict loadCompiledDict(Uint8List bytes) {
   // A copy: reading a JS typed array or a view is much slower on the web.
   final reader = _Reader(Uint8List.fromList(bytes))..pos = _magic.length;
   final version = reader.byte();
-  if (version != _version) {
+  if (version != 1 && version != _version) {
     throw FormatException(
       'Unsupported compiled hyphenation dictionary version $version',
     );
   }
-  final flags = reader.byte();
+  final flags = version == 1 ? 0 : reader.byte();
   if (flags > 1) throw _malformed;
   final levels = [
     for (var i = reader.varint(); i > 0; --i)

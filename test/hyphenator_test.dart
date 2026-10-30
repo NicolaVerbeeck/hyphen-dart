@@ -328,11 +328,19 @@ void main() {
       );
       final lf = parse('\n');
       final crlf = parse('\r\n');
+      final cr = parse('\r');
+      // Lines of a CR LF text split at the '\n'
+      final splitCrlf = DictParser().parseLines([
+        for (final line in lines.skip(1)) '$line\r',
+      ], isUtf8: true);
 
       expect(lf.noHyphenWords, ['x', 'b']);
       expect(crlf.noHyphenWords, ['x', 'b\r']);
+      expect(cr.noHyphenWords, ['x', 'b']);
+      expect(splitCrlf.noHyphenWords, ['x', 'b\r']);
       expect(const Hyphenator().hyphenate(lf, 'ab').hyphword, 'ab');
       expect(const Hyphenator().hyphenate(crlf, 'ab').hyphword, 'a=b');
+      expect(const Hyphenator().hyphenate(cr, 'ab').hyphword, 'ab');
     });
 
     test('lines ending in CR LF', () {
