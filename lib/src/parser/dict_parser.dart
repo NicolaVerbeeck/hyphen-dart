@@ -86,6 +86,10 @@ class DictParser {
               dict.noHyphenWords
                 ..clear()
                 ..addAll(line.substring(8).trimLeft().split(','));
+              // libhyphen drops only the line's last character, the '\n':
+              // before a '\r\n', the last word keeps its '\r' and never
+              // matches.
+              if (lines.endsWithCrLf) dict.noHyphenWords.last += '\r';
               continue;
             } else if (line.startsWith('NEXTLEVEL')) {
               ++level;
@@ -116,9 +120,12 @@ class DictParser {
       }
     }
     if (level == 1) {
-      return dictionaries[0].build(nextLevel: dictionaries[1].build());
+      return dictionaries[0].build(
+        isUtf8: isUtf8,
+        nextLevel: dictionaries[1].build(isUtf8: isUtf8),
+      );
     } else {
-      final first = dictionaries[0].build();
+      final first = dictionaries[0].build(isUtf8: isUtf8);
       return (dictionaries[1]
             ..leftHyphenMin = first.leftHyphenMin
             ..rightHyphenMin = first.rightHyphenMin
@@ -128,7 +135,7 @@ class DictParser {
             ..compoundRightHyphenMin = first.compoundRightHyphenMin != 0
                 ? first.compoundRightHyphenMin
                 : (first.rightHyphenMin != 0 ? first.rightHyphenMin : 3))
-          .build(nextLevel: first);
+          .build(isUtf8: isUtf8, nextLevel: first);
     }
   }
 
@@ -311,7 +318,7 @@ class _LevelBuilder {
     );
   }
 
-  HyphenDict build({HyphenDict? nextLevel}) {
+  HyphenDict build({required bool isUtf8, HyphenDict? nextLevel}) {
     final count = _parent.length;
     final parent = _parent.toList();
     final chars = _char.toList();
@@ -369,6 +376,7 @@ class _LevelBuilder {
       compoundLeftHyphenMin: compoundLeftHyphenMin,
       compoundRightHyphenMin: compoundRightHyphenMin,
       noHyphenWords: noHyphenWords,
+      isUtf8: isUtf8,
       nextLevel: nextLevel,
     );
   }
@@ -381,6 +389,10 @@ abstract interface class _Lines {
   int get start;
 
   int get end;
+
+  /// Whether the line ends with "\r\n", whose '\r' libhyphen keeps in a
+  /// NOHYPHEN line.
+  bool get endsWithCrLf;
 
   bool moveNext();
 }
@@ -400,6 +412,11 @@ class _ListLines implements _Lines {
 
   @override
   var end = 0;
+
+  /// A line given with its '\r' comes from text with "\r\n" line ends, split
+  /// at the '\n'.
+  @override
+  bool get endsWithCrLf => end < text.length && text.codeUnitAt(end) == 0x0D;
 
   @override
   bool moveNext() {
@@ -433,6 +450,9 @@ class _TextLines implements _Lines {
   var end = 0;
 
   @override
+  var endsWithCrLf = false;
+
+  @override
   bool moveNext() {
     if (_next >= text.length) return false;
     start = _next;
@@ -443,11 +463,11 @@ class _TextLines implements _Lines {
       ++end;
     }
     _next = end + 1;
-    if (_next < text.length &&
+    endsWithCrLf =
+        _next < text.length &&
         text.codeUnitAt(end) == 0x0D &&
-        text.codeUnitAt(_next) == 0x0A) {
-      ++_next;
-    }
+        text.codeUnitAt(_next) == 0x0A;
+    if (endsWithCrLf) ++_next;
     return true;
   }
 }

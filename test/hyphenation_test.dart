@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:hyphen_dart/src/compiled_dict.dart';
 import 'package:hyphen_dart/src/hyphenator.dart';
 import 'package:hyphen_dart/src/model/dict.dart';
+import 'package:hyphen_dart/src/model/result.dart';
 import 'package:hyphen_dart/src/parser/dict_parser.dart';
 import 'package:path/path.dart';
 import 'package:test/test.dart';
@@ -65,12 +66,30 @@ Future<void> main() async {
               final actual = hyphenator.hyphenate(dict, inputWord);
               final expectedWord = expected[index];
               expect(actual.hyphword, expectedWord);
+              expect(_hyphwordFromBreaks(inputWord, actual), expectedWord);
             });
           }
         });
       }
     }
   });
+}
+
+/// [HyphenResult.hyphword] built from the [HyphenResult.part]s between the
+/// breaks the way libhyphen applies them: in order, leaving out the breaks
+/// that cannot follow the one before, and cut at libhyphen's length limit.
+String _hyphwordFromBreaks(String word, HyphenResult result) {
+  final used = <HyphenBreak>[];
+  for (final b in result.breaks) {
+    if (used.isEmpty || b.canFollow(used.last)) used.add(b);
+  }
+  final parts = [
+    for (var i = 0; i <= used.length; ++i)
+      result.part(i > 0 ? used[i - 1] : null, i < used.length ? used[i] : null),
+  ];
+  return String.fromCharCodes(
+    parts.join('=').runes.take(2 * word.runes.length - 1),
+  );
 }
 
 /// The encoding is in the first line of the dict file
